@@ -1,39 +1,37 @@
-const jwt = require('jsonwebtoken');
-const promisify = require('util').promisify;
+const { error } = require("console");
+const jwt = require("jsonwebtoken");
+const promisify = require("util").promisify;
 const verify = promisify(jwt.verify).bind(jwt);
-require('dotenv').config();
+require("dotenv").config();
 
-const secretKey =  process.env.ACCESS_TOKEN_SECRET;
+const secretKey = process.env.ACCESS_TOKEN_SECRET;
 
 module.exports = async (req, res, next) => {
-    console.log('reqzz',req );
-    const bearerHeader  = req.headers['authorization'];  
+  const bearerHeader = req.headers["authorization"];
 
-    if(typeof(bearerHeader ) !== 'undefined') {
-        const bearer = bearerHeader .split(' ');
-        const bearerToken = bearer[1];
-        req.jwtToken = bearerToken;
+  if (typeof bearerHeader !== "undefined") {
+    const bearer = bearerHeader.split(" ");
+    const bearerToken = bearer[1];
 
-        let result;
-        let anyError = false;
-        try {
-            result = await verify(bearerToken, secretKey);
-        }
-        catch(error) {
-            anyError = true;
-        }
+    req.jwtToken = bearerToken;
+    console.log(">>>", bearerToken.replace('"', ""), secretKey);
+    let result;
+    let anyError = false;
 
-        if(!anyError) {
-            req.authData = result;
-            next();
-        }
-        else {
-            res.sendStatus(403);
-        }
-    }
-    else {
-        res.sendStatus(403);
+    try {
+      result = await verify(bearerToken, secretKey);
+    } catch (error) {
+      anyError = true;
+      console.log(">>>tokenError", error);
     }
 
-    
+    if (!anyError) {
+      req.authData = result;
+      next();
+    } else {
+      res.sendStatus(401);
+    }
+  } else {
+    res.sendStatus(401);
+  }
 };
