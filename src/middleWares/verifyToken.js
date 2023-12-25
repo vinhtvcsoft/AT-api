@@ -14,7 +14,6 @@ module.exports = async (req, res, next) => {
     const bearerToken = bearer[1];
 
     req.jwtToken = bearerToken;
-    console.log(">>>", bearerToken.replace('"', ""), secretKey);
     let result;
     let anyError = false;
 
@@ -27,6 +26,15 @@ module.exports = async (req, res, next) => {
 
     if (!anyError) {
       req.authData = result;
+
+      if (!userState) {
+        console.log(">>>userState", req.authData);
+        global.userState = {
+          DB: req.authData.payload.db,
+          USER: req.authData.payload.username,
+        };
+      }
+
       next();
     } else {
       res.sendStatus(401);

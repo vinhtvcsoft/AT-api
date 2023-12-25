@@ -4,6 +4,7 @@
     //   "target": "es6"
     "paths": {
         "models": ["./models/"],
+        "controllers": ["./controllers"],
       }
     },
     "exclude": ["node_modules"]

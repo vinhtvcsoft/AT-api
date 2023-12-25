@@ -1,10 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const {
-  login,
-  refreshToken,
-  getList,
-} = require("../controllers/authController");
+const { login, refreshToken } = require("../controllers/authController");
+const { getList } = require("../controllers/userController");
 const verifyToken = require("../middleWares/verifyToken");
 const bodyParser = require("body-parser");
 

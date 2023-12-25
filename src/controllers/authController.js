@@ -92,18 +92,24 @@ const login = async (req, res) => {
     return res.status(401).send("Robot detected.");
 
   //Check exits User
-  const user = await getUserByOperatorId("AT", operatorid);
-  if (!user) {
+  const userInf = await getUserByOperatorId(operatorid);
+  if (!userInf) {
     return res.status(401).send("Tên đăng nhập không tồn tại.");
   }
 
-  const isPasswordValid = await decryptPassword(password, user[0].password);
+  const db = userInf[0].tvcdb;
+  const user = userInf[0].operatorid;
+  const userPassword = userInf[0].password;
+  const roleid = userInf[0].roleid;
+
+  const isPasswordValid = await decryptPassword(password, userPassword);
   if (!isPasswordValid) {
     return res.status(401).send("Mật khẩu không chính xác.");
   }
 
   const dataForAccessToken = {
-    username: operatorid,
+    username: user,
+    db,
   };
 
   const accessToken = await generateToken(
@@ -123,7 +129,7 @@ const login = async (req, res) => {
   toDay.setMinutes(0);
   toDay.setSeconds(0);
 
-  const oldTokens = await getRefeshToken(operatorid, "ERP");
+  const oldTokens = await getRefeshToken(user, "ERP");
   const refreshToken = randToken.generate(55);
   const ipAddresses = req.header("x-forwarded-for") || req.socket.remoteAddress;
 
@@ -131,8 +137,8 @@ const login = async (req, res) => {
     console.log(">>>deleted", oldTokens[0].token);
     deleteRefreshToken(oldTokens[0].token);
     addRefreshToken({
-      tvcdb: "AT",
-      operatorid: operatorid,
+      tvcdb: db,
+      operatorid: user,
       appid: "ERP",
       token: refreshToken,
       expires: formatYMDHIS(toDay),
@@ -141,8 +147,8 @@ const login = async (req, res) => {
     });
   } else {
     addRefreshToken({
-      tvcdb: "AT",
-      operatorid: operatorid,
+      tvcdb: db,
+      operatorid: user,
       appid: "ERP",
       token: refreshToken,
       expires: formatYMDHIS(toDay),
@@ -150,23 +156,21 @@ const login = async (req, res) => {
       created: getToday(),
     });
   }
+  global.userState = {
+    DB: db,
+    USER: user,
+  };
 
   return res.json({
     result: {
       data: {
-        operatorid,
+        operatorid: user,
         roleid: "",
         accessToken,
         refreshToken,
       },
     },
   });
-};
-
-const getList = async (req, res) => {
-  const list = await fetchUser("AT");
-
-  res.send(list);
 };
 
 const refreshToken = async (req, res) => {
@@ -187,9 +191,10 @@ const refreshToken = async (req, res) => {
 
   if (!verifyInfo) return res.sendStatus(401);
 
-  const operatorid = verifyInfo.payload.username;
+  const username = verifyInfo.payload.username;
+  const db = verifyInfo.payload.db;
 
-  const oldTokens = await getRefeshToken(operatorid, "ERP");
+  const oldTokens = await getRefeshToken(username, "ERP");
 
   if (!oldTokens || oldTokens.length === 0) return res.sendStatus(401);
 
@@ -197,11 +202,17 @@ const refreshToken = async (req, res) => {
 
   const accessToken = await generateToken(
     {
-      username: operatorid,
+      username,
+      db,
     },
     secretKey,
     timeLiveToken
   );
+
+  global.userState = {
+    DB: db,
+    USER: username,
+  };
 
   return res.json({
     message: "Refesh token successfull.",
@@ -212,6 +223,5 @@ const refreshToken = async (req, res) => {
 
 module.exports = {
   login,
-  getList,
   refreshToken,
 };
